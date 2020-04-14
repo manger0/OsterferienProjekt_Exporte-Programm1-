@@ -5,7 +5,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.sql.*;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Scanner;
 
 public class Main {
@@ -31,7 +30,7 @@ public class Main {
                 // (export2) printing ingredient; ingredientAmount
                 if (choice == 2) export2(connection);
             }
-        } catch (SQLException | IOException e) {
+        } catch (SQLException e) {
             throw new Error("connection problem", e);
         } finally {
             try {
@@ -47,8 +46,6 @@ public class Main {
     public static void export1(Connection connection) {
         // creating and if allready exists emptying existing file
         File myFile = new File("C:\\Users\\DCV\\Desktop\\BestellId_KundeNr_Gesamtpreis.csv");
-        if (myFile.exists()) myFile.delete();
-
         String query = "select order_date, customer_id, delivery_price + total_meal_price + extra_price AS total_price" +
                 " from `order` ORDER BY order_date DESC";
         try (Statement statementRead = connection.createStatement()) {
@@ -61,31 +58,38 @@ public class Main {
                 export1ToFile(myFile, date, customerId, totalPrice);
                 System.out.println(date + "     |     " + customerId + "     |     " + totalPrice + "$");
             }
-        } catch (SQLException | IOException e) {
+        } catch (SQLException ex) {
             System.out.println("export1 problem");
         }
         System.out.println("\n");
     }
 
-    public static void export1ToFile(File myFile, Date date, int customerId, double totalPrice) throws IOException {
-        FileWriter myWriter = new FileWriter(myFile, true);
-        myWriter.write("OrderDate      | CustomerId | totalPrice\n");
-        myWriter.write(date + "     |     " + customerId + "     |     " + totalPrice + "$");
-        myWriter.write("\n\n");
-        myWriter.flush();
-        myWriter.close();
+    public static void export1ToFile(File myFile, Date date, int customerId, double totalPrice) {
+        try {
+            FileWriter myWriter = new FileWriter(myFile, true);
+            myWriter.write("OrderDate      | CustomerId | totalPrice\n");
+            myWriter.write(date + "     |     " + customerId + "     |     " + totalPrice + "$");
+            myWriter.write("\n\n");
+            myWriter.flush();
+            myWriter.close();
+        } catch (IOException ex) {
+            System.out.println("export1ToFile problem");
+        }
     }
 
-    public static void export2(Connection connection) throws IOException {
-        // creating and if allready exists emptying existing file
-        File myFile = new File("C:\\Users\\DCV\\Desktop\\Zutat_Anzahl.csv");
-        if (myFile.exists()) myFile.delete();
-        ArrayList<String> ingredients = createIngredientArray(connection);
-        int[] ingredientCounter = new int[ingredients.size()];
-        ingredientCounter = ingredientCount(ingredients, ingredientCounter, connection);
-        // printing of ingredient and amount
-        printIngredientsList(ingredients, ingredientCounter);
-        export2ToFile(ingredients, ingredientCounter, myFile);
+    public static void export2(Connection connection) {
+        try {
+            // creating and if allready exists emptying existing file
+            File myFile = new File("C:\\Users\\DCV\\Desktop\\Zutat_Anzahl.csv");
+            ArrayList<String> ingredients = createIngredientArray(connection);
+            int[] ingredientCounter = new int[ingredients.size()];
+            int[] ingredientCounterFull = ingredientCount(ingredients, ingredientCounter, connection);
+            // printing of ingredient and amount
+            printIngredientsList(ingredients, ingredientCounterFull);
+            export2ToFile(ingredients, ingredientCounterFull, myFile);
+        } catch (IOException e) {
+            System.out.println("export2 problem");
+        }
     }
 
     public static void export2ToFile(ArrayList<String> ingredients, int[] ingredientCounter, File myFile) throws IOException {
@@ -122,7 +126,7 @@ public class Main {
                             "WHERE menu_name = '" + meal + "';";
                     try (Statement statementRead = connection.createStatement()) {
                         ResultSet resultSet = statementRead.executeQuery(printIngredient);
-                        String ingredient = "";
+                        String ingredient;
                         while (resultSet.next()) {
                             ingredient = resultSet.getString(1);
                             // increment ingredientCounter Array
